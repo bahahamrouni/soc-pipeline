@@ -1,0 +1,125 @@
+version: "3.9"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+networks:
+  soc-net:
+    driver: bridge
+
+volumes:
+  kafka-data:
+  redis-data:
+  postgres-data:
+
+services:
+
+  kafka:
+    image: apache/kafka:4.1.1
+    container_name: soc-kafka
+    hostname: kafka
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      NODE_ID: "1"
+      PROCESS_ROLES: "broker,controller"
+      LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9091"
+      ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      CONTROLLER_QUORUM_VOTERS: "1@kafka:9091"
+      CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      LOG_DIRS: "/var/lib/kafka/data"
+      AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: soc-redis
+    hostname: redis
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    volumes:
+      - redis-data:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: soc-postgres
+    hostname: postgres
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init/postgres/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./init/postgres/02-seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    environment:
+      POSTGRES_DB: socdb
+      POSTGRES_USER: socadmin
+      POSTGRES_PASSWORD: S0cAdmin!
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U socadmin -d socdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka-init:
+    image: apache/kafka:4.1.1
+    container_name: soc-kafka-init
+    networks:
+      - soc-net
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./init/kafka/create-topics.sh:/create-topics.sh:ro
+    entrypoint: ["/bin/bash", "/create-topics.sh"]
+    environment:
+      KAFKA_BROKER: kafka:9092
+
+  ingestion:
+    build:
+      context: ./services/ingestion
+      dockerfile: Dockerfile
+    container_name: soc-ingestion
+    hostname: ingestion
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    volumes:
+      - /var/ossec/logs/alerts:/app/data:ro
+    environment:
+      KAFKA_BROKER: kafka:9092
+      ALERTS_FILE: /app/data/alerts.json
+      KAFKA_TOPIC: wazuh-alerts-raw
+      POLL_INTERVAL: "2"
+      LOG_LEVEL: INFO
+    depends_on:
+      kafka:
+        condition: service_healthy
