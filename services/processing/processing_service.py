@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
 Processing Service - SOC Pipeline Phase 2
-Consumes raw Wazuh alerts, parses, normalizes to ECS, enriches with GeoIP + CMDB
+Consumes raw Wazuh alerts, parses, normalizes to ECS, enriches with CMDB
 """
 
 import json
 import time
 import logging
 import os
-from pathlib import Path
 from datetime import datetime
 
 logging.basicConfig(
@@ -25,21 +24,6 @@ except ImportError:
     logger.info("Installing kafka-python...")
     os.system("pip install kafka-python -q")
     from kafka import KafkaConsumer, KafkaProducer
-
-try:
-    from drain3 import LogClusterCache
-    from drain3.drain import Drain
-except ImportError:
-    logger.info("Installing drain3...")
-    os.system("pip install drain3 -q")
-    from drain3 import LogClusterCache
-    from drain3.drain import Drain
-
-try:
-    import geoip2.database
-except ImportError:
-    logger.info("GeoIP2 not available, skipping GeoIP enrichment")
-    geoip2 = None
 
 
 class CMDBLookup:
@@ -60,23 +44,13 @@ class CMDBLookup:
 
 
 class LogTemplate:
-    """Simple log template extraction (Drain3 wrapper)"""
-    
-    def __init__(self):
-        self.drain = Drain(
-            log_cluster_cache=LogClusterCache(),
-            similarity_threshold=0.5,
-            depth=4
-        )
+    """Simple log template extraction"""
     
     def extract_template(self, log_message):
-        """Extract template from log message"""
-        try:
-            cluster = self.drain.add_log_message(log_message)
-            return cluster.template if cluster else log_message
-        except Exception as e:
-            logger.debug(f"Template extraction error: {e}")
-            return log_message
+        """Extract first 100 chars as template signature"""
+        if not log_message:
+            return ""
+        return log_message[:100] if len(log_message) > 100 else log_message
 
 
 class ProcessingService:
@@ -155,21 +129,15 @@ class ProcessingService:
         }
     
     def normalize_to_ecs(self, parsed, alert):
-        """Normalize to ECS (Elastic Common Schema) format"""
+        """Normalize to ECS format"""
         
-        # Extract template from log
         log_template = self.template.extract_template(parsed['full_log']) if parsed['full_log'] else ''
-        
-        # Enrich with CMDB
         asset = self.cmdb.lookup(parsed['agent_ip'])
         
-        # Map Wazuh rule level to severity
         severity_map = {0: 'info', 1: 'low', 2: 'low', 3: 'medium', 4: 'medium', 5: 'high', 6: 'critical', 7: 'critical'}
         severity = severity_map.get(parsed['rule_level'], 'unknown')
         
-        # Build ECS-normalized event
         ecs_event = {
-            # Core ECS fields
             '@timestamp': parsed['timestamp'],
             'event': {
                 'id': alert.get('_event_id', 'unknown'),
@@ -180,8 +148,6 @@ class ProcessingService:
                 'reason': parsed['rule_description'],
                 'action': 'log',
             },
-            
-            # Host fields
             'host': {
                 'name': parsed['agent_name'],
                 'id': parsed['agent_id'],
@@ -190,15 +156,11 @@ class ProcessingService:
                     'type': 'linux' if 'ubuntu' in parsed['agent_name'].lower() else 'windows' if 'win' in parsed['agent_name'].lower() else 'unknown'
                 },
             },
-            
-            # CMDB enrichment
             'asset': {
                 'hostname': asset.get('hostname'),
                 'criticality': asset.get('criticality'),
                 'role': asset.get('role'),
             },
-            
-            # Log/Rule fields
             'log': {
                 'level': parsed['rule_level'],
                 'logger': 'wazuh',
@@ -210,26 +172,16 @@ class ProcessingService:
                 'category': ', '.join(parsed['rule_group']) if parsed['rule_group'] else 'unknown',
                 'ruleset': 'wazuh',
             },
-            
-            # Template (for correlation)
             'log_template': log_template,
-            
-            # Original alert (for reference)
             'wazuh': alert,
-            
-            # Source enrichment
             'source': {
                 'ip': alert.get('data', {}).get('srcip', alert.get('data', {}).get('source_ip', 'unknown')),
                 'port': alert.get('data', {}).get('srcport'),
             },
-            
-            # Destination enrichment
             'destination': {
                 'ip': alert.get('data', {}).get('dstip', alert.get('data', {}).get('destination_ip', 'unknown')),
                 'port': alert.get('data', {}).get('dstport'),
             },
-            
-            # Metadata
             '_processing_timestamp': time.time(),
             '_normalized': True,
         }
@@ -239,13 +191,9 @@ class ProcessingService:
     def process_alert(self, alert):
         """Process one alert: parse, normalize, enrich"""
         try:
-            # Parse Wazuh structure
             parsed = self.parse_wazuh_alert(alert)
-            
-            # Normalize to ECS
             ecs_event = self.normalize_to_ecs(parsed, alert)
             
-            # Send to enriched topic
             future = self.producer.send(self.producer_topic, value=ecs_event)
             future.get(timeout=5)
             
