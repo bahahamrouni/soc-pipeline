@@ -15,7 +15,6 @@ help:
 setup:
 	@echo "Setting up SOC Pipeline..."
 	@chmod +x init/kafka/create-topics.sh
-	@chmod +x init/opensearch/create-index-template.sh
 	@echo "✓ Setup complete. Run: make up"
 
 up:

@@ -15,13 +15,29 @@ networks:
 
 volumes:
   kafka-data:
+  zookeeper-data:
   redis-data:
   postgres-data:
 
 services:
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: soc-zookeeper
+    hostname: zookeeper
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_INIT_LIMIT: 5
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+
   kafka:
-    image: apache/kafka:4.1.1
+    image: confluentinc/cp-kafka:7.5.0
     container_name: soc-kafka
     hostname: kafka
     <<: *default-restart
@@ -30,23 +46,35 @@ services:
       - soc-net
     ports:
       - "9092:9092"
+    depends_on:
+      - zookeeper
     volumes:
       - kafka-data:/var/lib/kafka/data
     environment:
-      NODE_ID: "1"
-      PROCESS_ROLES: "broker,controller"
-      LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9091"
-      ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
-      LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
-      CONTROLLER_QUORUM_VOTERS: "1@kafka:9091"
-      CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      LOG_DIRS: "/var/lib/kafka/data"
-      AUTO_CREATE_TOPICS_ENABLE: "false"
-    healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: soc-kafka-init
+    networks:
+      - soc-net
+    depends_on:
+      - kafka
+    volumes:
+      - ./init/kafka/create-topics.sh:/create-topics.sh:ro
+    entrypoint: ["/bin/bash", "/create-topics.sh"]
+    environment:
+      KAFKA_BROKER: kafka:9092
 
   redis:
     image: redis:7-alpine
@@ -88,20 +116,6 @@ services:
       timeout: 5s
       retries: 5
 
-  kafka-init:
-    image: apache/kafka:4.1.1
-    container_name: soc-kafka-init
-    networks:
-      - soc-net
-    depends_on:
-      kafka:
-        condition: service_healthy
-    volumes:
-      - ./init/kafka/create-topics.sh:/create-topics.sh:ro
-    entrypoint: ["/bin/bash", "/create-topics.sh"]
-    environment:
-      KAFKA_BROKER: kafka:9092
-
   ingestion:
     build:
       context: ./services/ingestion
@@ -121,5 +135,4 @@ services:
       POLL_INTERVAL: "2"
       LOG_LEVEL: INFO
     depends_on:
-      kafka:
-        condition: service_healthy
+      - kafka
