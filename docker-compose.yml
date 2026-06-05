@@ -136,3 +136,20 @@ services:
       LOG_LEVEL: INFO
     depends_on:
       - kafka
+  processing:
+      build:
+        context: ./services/processing
+        dockerfile: Dockerfile
+      container_name: soc-processing
+      hostname: processing
+      <<: *default-restart
+      logging: *default-logging
+      networks:
+        - soc-net
+      environment:
+        KAFKA_BROKER: kafka:9092
+        KAFKA_CONSUMER_TOPIC: wazuh-alerts-raw
+        KAFKA_PRODUCER_TOPIC: alerts-enriched
+        LOG_LEVEL: INFO
+      depends_on:
+        - kafka      
