@@ -12,7 +12,6 @@ import sys
 import logging
 from pathlib import Path
 
-# Setup logging
 logging.basicConfig(
     level=os.environ.get('LOG_LEVEL', 'INFO'),
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -44,7 +43,6 @@ class IngestionService:
         self.running = True
         
     def connect_kafka(self):
-        """Connect to Kafka with retries"""
         logger.info(f"Connecting to Kafka: {self.kafka_broker}")
         
         for attempt in range(15):
@@ -69,7 +67,6 @@ class IngestionService:
         return False
     
     def get_position(self):
-        """Get last read position"""
         pos_file = Path(self.alerts_file).with_suffix('.pos')
         if pos_file.exists():
             try:
@@ -82,12 +79,13 @@ class IngestionService:
         return 0
     
     def save_position(self, position):
-        """Save current read position"""
         pos_file = Path(self.alerts_file).with_suffix('.pos')
-        pos_file.write_text(str(position))
+        try:
+            pos_file.write_text(str(position))
+        except:
+            pass
     
     def process_line(self, line, line_num):
-        """Process one alert line and send to Kafka"""
         line = line.strip()
         if not line:
             return False
@@ -95,12 +93,10 @@ class IngestionService:
         try:
             alert = json.loads(line)
             
-            # Add ingestion metadata
             alert['_event_id'] = str(uuid.uuid4())
             alert['_ingest_timestamp'] = time.time()
             alert['_source'] = 'wazuh'
             
-            # Send to Kafka
             future = self.producer.send(self.topic, value=alert)
             future.get(timeout=5)
             
@@ -123,7 +119,6 @@ class IngestionService:
             return False
     
     def process_file(self):
-        """Read and process new lines from alerts file"""
         if not Path(self.alerts_file).exists():
             logger.debug(f"Waiting for file: {self.alerts_file}")
             return
@@ -149,7 +144,6 @@ class IngestionService:
             logger.error(f"File read error: {e}")
     
     def run(self):
-        """Main event loop"""
         logger.info("="*60)
         logger.info("SOC INGESTION SERVICE")
         logger.info("="*60)
