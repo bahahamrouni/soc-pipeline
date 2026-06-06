@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
-Ingestion Service - SOC Pipeline
-Reads Wazuh alerts from alerts.json and publishes to Kafka
+Ingestion Service - SOC Pipeline Phase 1
+Reads Wazuh alerts.json and sends to Kafka
 """
 
 import json
 import time
-import uuid
-import os
-import sys
 import logging
+import os
 from pathlib import Path
+from confluent_kafka import Producer, KafkaError
 
 logging.basicConfig(
     level=os.environ.get('LOG_LEVEL', 'INFO'),
@@ -19,173 +18,191 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-try:
-    from kafka import KafkaProducer
-    from kafka.errors import NoBrokersAvailable
-except ImportError:
-    logger.info("Installing kafka-python...")
-    os.system(f"{sys.executable} -m pip install kafka-python -q")
-    from kafka import KafkaProducer
-    from kafka.errors import NoBrokersAvailable
-
 
 class IngestionService:
     def __init__(self):
         self.alerts_file = os.environ.get('ALERTS_FILE', '/app/data/alerts.json')
         self.kafka_broker = os.environ.get('KAFKA_BROKER', 'kafka:9092')
-        self.topic = os.environ.get('KAFKA_TOPIC', 'wazuh-alerts-raw')
-        self.poll_interval = int(os.environ.get('POLL_INTERVAL', 2))
+        self.kafka_topic = os.environ.get('KAFKA_TOPIC', 'wazuh-alerts-raw')
+        self.poll_interval = int(os.environ.get('POLL_INTERVAL', '2'))
         
         self.producer = None
-        self.file_position = 0
-        self.processed_count = 0
-        self.error_count = 0
-        self.running = True
+        self.last_position = 0
+        self.position_file = self.alerts_file + '.pos'
         
+        self.sent_count = 0
+        self.error_count = 0
+    
     def connect_kafka(self):
+        """Connect to Kafka broker using Confluent client with retry"""
         logger.info(f"Connecting to Kafka: {self.kafka_broker}")
         
-        for attempt in range(15):
-            try:
-                self.producer = KafkaProducer(
-                    bootstrap_servers=[self.kafka_broker],
-                    value_serializer=lambda v: json.dumps(v, default=str).encode('utf-8'),
-                    max_block_ms=5000,
-                    request_timeout_ms=5000
-                )
-                self.producer.bootstrap_connected()
-                logger.info(f"Connected to Kafka (attempt {attempt + 1})")
-                return True
-            except NoBrokersAvailable:
-                logger.warning(f"Kafka unavailable, retrying... ({attempt + 1}/15)")
-                time.sleep(3)
-            except Exception as e:
-                logger.warning(f"Connection error: {e} ({attempt + 1}/15)")
-                time.sleep(3)
-        
-        logger.error("Failed to connect to Kafka after 15 attempts")
-        return False
-    
-    def get_position(self):
-        pos_file = Path(self.alerts_file).with_suffix('.pos')
-        if pos_file.exists():
-            try:
-                position = int(pos_file.read_text().strip())
-                logger.info(f"Resuming from position: {position}")
-                return position
-            except:
-                return 0
-        logger.info("Starting from beginning (no saved position)")
-        return 0
-    
-    def save_position(self, position):
-        pos_file = Path(self.alerts_file).with_suffix('.pos')
-        try:
-            pos_file.write_text(str(position))
-        except:
-            pass
-    
-    def process_line(self, line, line_num):
-        line = line.strip()
-        if not line:
-            return False
+        producer_config = {
+            'bootstrap.servers': self.kafka_broker,
+            'acks': 'all',
+            'retries': 10,
+            'topic.metadata.refresh.interval.ms': 5000,
+        }
         
         try:
-            alert = json.loads(line)
+            self.producer = Producer(producer_config)
             
-            alert['_event_id'] = str(uuid.uuid4())
-            alert['_ingest_timestamp'] = time.time()
-            alert['_source'] = 'wazuh'
+            # Force metadata refresh
+            logger.info("Refreshing Kafka metadata...")
+            time.sleep(3)
             
-            future = self.producer.send(self.topic, value=alert)
-            future.get(timeout=5)
+            # Test producer with retry
+            for attempt in range(10):
+                try:
+                    # Trigger metadata fetch by checking topic
+                    self.producer.list_topics(timeout=5)
+                    logger.info(f"Kafka metadata refreshed (attempt {attempt + 1})")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Metadata refresh attempt {attempt + 1} failed: {e}")
+                    time.sleep(2)
             
-            self.processed_count += 1
-            
-            rule_id = alert.get('rule', {}).get('id', 'unknown')
-            agent = alert.get('agent', {}).get('name', 'unknown')
-            logger.debug(f"[{self.processed_count}] Rule:{rule_id} Agent:{agent}")
-            
-            return True
-            
-        except json.JSONDecodeError:
-            self.error_count += 1
-            if self.error_count <= 5:
-                logger.warning(f"Line {line_num}: Invalid JSON")
+            logger.error("Failed to refresh metadata after 10 attempts")
             return False
+            
         except Exception as e:
-            self.error_count += 1
-            logger.error(f"Kafka send error: {e}")
+            logger.error(f"Failed to connect to Kafka: {e}")
             return False
     
-    def process_file(self):
-        if not Path(self.alerts_file).exists():
-            logger.debug(f"Waiting for file: {self.alerts_file}")
+    def load_position(self):
+        """Load last read position"""
+        if os.path.exists(self.position_file):
+            try:
+                with open(self.position_file, 'r') as f:
+                    self.last_position = int(f.read().strip())
+                logger.info(f"Loaded position: {self.last_position}")
+            except Exception as e:
+                logger.warning(f"Could not load position: {e}")
+    
+    def save_position(self):
+        """Save current read position"""
+        try:
+            with open(self.position_file, 'w') as f:
+                f.write(str(self.last_position))
+        except Exception as e:
+            logger.error(f"Could not save position: {e}")
+    
+    def read_existing_alerts(self):
+        """Read existing alerts from file"""
+        if not os.path.exists(self.alerts_file):
+            logger.warning(f"Alerts file not found: {self.alerts_file}")
             return
+        
+        logger.info(f"Reading existing alerts from {self.alerts_file}...")
         
         try:
             with open(self.alerts_file, 'r') as f:
-                f.seek(self.file_position)
-                
-                lines_processed = 0
-                for line_num, line in enumerate(f, 1):
-                    if self.process_line(line, line_num):
-                        lines_processed += 1
-                
-                new_position = f.tell()
-                if new_position > self.file_position:
-                    self.file_position = new_position
-                    self.save_position(self.file_position)
+                line_num = 0
+                for line in f:
+                    line_num += 1
+                    if line_num <= self.last_position:
+                        continue
                     
-                if lines_processed > 0:
-                    logger.info(f"Processed {lines_processed} alerts (Total: {self.processed_count})")
+                    line = line.strip()
+                    if not line:
+                        continue
                     
-        except Exception as e:
+                    try:
+                        alert = json.loads(line)
+                        self.send_alert(alert)
+                        self.last_position = line_num
+                    except json.JSONDecodeError as e:
+                        logger.error(f"JSON decode error on line {line_num}: {e}")
+                        self.error_count += 1
+        
+        except IOError as e:
             logger.error(f"File read error: {e}")
+        
+        self.save_position()
+        logger.info(f"Finished reading existing alerts. Position: {self.last_position}")
+    
+    def send_alert(self, alert):
+        """Send alert to Kafka"""
+        try:
+            alert['_event_id'] = alert.get('id', str(int(time.time() * 1000)))
+            alert['_ingest_timestamp'] = time.time()
+            alert['_source'] = 'wazuh'
+            
+            self.producer.produce(
+                self.kafka_topic,
+                value=json.dumps(alert, default=str).encode('utf-8')
+            )
+            self.producer.flush()
+            
+            self.sent_count += 1
+            logger.debug(f"[{self.sent_count}] Sent alert: {alert.get('rule', {}).get('id', 'unknown')}")
+            
+        except Exception as e:
+            self.error_count += 1
+            logger.error(f"Send error: {e}")
+    
+    def watch_for_new_alerts(self):
+        """Watch file for new alerts"""
+        logger.info("Watching for new alerts...")
+        
+        try:
+            while True:
+                try:
+                    with open(self.alerts_file, 'r') as f:
+                        f.seek(0, 2)  # Go to end
+                        
+                        while True:
+                            line = f.readline()
+                            if not line:
+                                time.sleep(self.poll_interval)
+                                continue
+                            
+                            line = line.strip()
+                            if not line:
+                                continue
+                            
+                            try:
+                                alert = json.loads(line)
+                                self.send_alert(alert)
+                                self.last_position += 1
+                                self.save_position()
+                            except json.JSONDecodeError as e:
+                                logger.error(f"JSON decode error: {e}")
+                                self.error_count += 1
+                
+                except IOError:
+                    time.sleep(self.poll_interval)
+        
+        except KeyboardInterrupt:
+            logger.info("Watch interrupted")
     
     def run(self):
+        """Main event loop"""
         logger.info("="*60)
         logger.info("SOC INGESTION SERVICE")
         logger.info("="*60)
         logger.info(f"Source file: {self.alerts_file}")
         logger.info(f"Kafka broker: {self.kafka_broker}")
-        logger.info(f"Topic: {self.topic}")
+        logger.info(f"Topic: {self.kafka_topic}")
         logger.info(f"Poll interval: {self.poll_interval}s")
         logger.info("="*60)
         
+        self.load_position()
+        
         if not self.connect_kafka():
             logger.error("Cannot start without Kafka")
-            sys.exit(1)
+            return False
         
-        self.file_position = self.get_position()
+        self.read_existing_alerts()
+        self.watch_for_new_alerts()
         
-        logger.info("Reading existing alerts...")
-        self.process_file()
+        logger.info("="*60)
+        logger.info("FINAL STATISTICS")
+        logger.info(f"Alerts sent: {self.sent_count}")
+        logger.info(f"Errors: {self.error_count}")
+        logger.info("Service stopped")
         
-        logger.info("Watching for new alerts...")
-        logger.info("(Press Ctrl+C to stop)")
-        
-        try:
-            while self.running:
-                if Path(self.alerts_file).exists():
-                    current_size = Path(self.alerts_file).stat().st_size
-                    if current_size > self.file_position:
-                        self.process_file()
-                
-                time.sleep(self.poll_interval)
-                
-        except KeyboardInterrupt:
-            logger.info("Shutdown requested...")
-        finally:
-            if self.producer:
-                self.producer.flush()
-                self.producer.close()
-            
-            logger.info("="*60)
-            logger.info("FINAL STATISTICS")
-            logger.info(f"Alerts processed: {self.processed_count}")
-            logger.info(f"Errors: {self.error_count}")
-            logger.info("Service stopped")
+        return True
 
 
 if __name__ == "__main__":
