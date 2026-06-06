@@ -80,7 +80,11 @@ class ProcessingService:
                     value_deserializer=lambda m: json.loads(m.decode('utf-8')),
                     group_id='processing-service',
                     enable_auto_commit=True,
-                    max_poll_records=10
+                    max_poll_records=10,
+                    session_timeout_ms=30000,
+                    heartbeat_interval_ms=10000,
+                    request_timeout_ms=40000,
+                    connections_max_idle_ms=540000
                 )
                 
                 self.producer = KafkaProducer(
