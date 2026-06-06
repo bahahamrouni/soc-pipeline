@@ -9,6 +9,7 @@ import time
 import logging
 import os
 from datetime import datetime
+from confluent_kafka import Consumer, Producer, KafkaError
 
 logging.basicConfig(
     level=os.environ.get('LOG_LEVEL', 'INFO'),
@@ -16,14 +17,6 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-
-try:
-    from kafka import KafkaConsumer, KafkaProducer
-    from kafka.errors import NoBrokersAvailable
-except ImportError:
-    logger.info("Installing kafka-python...")
-    os.system("pip install kafka-python -q")
-    from kafka import KafkaConsumer, KafkaProducer
 
 
 class CMDBLookup:
@@ -68,43 +61,33 @@ class ProcessingService:
         self.error_count = 0
     
     def connect_kafka(self):
-        """Connect to Kafka broker"""
+        """Connect to Kafka broker using Confluent client"""
         logger.info(f"Connecting to Kafka: {self.kafka_broker}")
         
-        for attempt in range(15):
-            try:
-                self.consumer = KafkaConsumer(
-                    self.consumer_topic,
-                    bootstrap_servers=[self.kafka_broker],
-                    auto_offset_reset='earliest',
-                    value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-                    group_id='processing-service',
-                    enable_auto_commit=True,
-                    max_poll_records=10,
-                    session_timeout_ms=30000,
-                    heartbeat_interval_ms=10000,
-                    request_timeout_ms=40000,
-                    connections_max_idle_ms=540000
-                )
-                
-                self.producer = KafkaProducer(
-                    bootstrap_servers=[self.kafka_broker],
-                    value_serializer=lambda v: json.dumps(v, default=str).encode('utf-8'),
-                    acks='all',
-                    retries=3
-                )
-                
-                logger.info(f"Connected to Kafka (attempt {attempt + 1})")
-                return True
-            except NoBrokersAvailable:
-                logger.warning(f"Kafka unavailable, retrying... ({attempt + 1}/15)")
-                time.sleep(3)
-            except Exception as e:
-                logger.warning(f"Connection error: {e} ({attempt + 1}/15)")
-                time.sleep(3)
+        consumer_config = {
+            'bootstrap.servers': self.kafka_broker,
+            'group.id': 'processing-service',
+            'auto.offset.reset': 'earliest',
+            'enable.auto.commit': True,
+            'session.timeout.ms': 30000,
+            'heartbeat.interval.ms': 10000,
+        }
         
-        logger.error("Failed to connect to Kafka after 15 attempts")
-        return False
+        producer_config = {
+            'bootstrap.servers': self.kafka_broker,
+            'acks': 'all',
+            'retries': 3,
+        }
+        
+        try:
+            self.consumer = Consumer(consumer_config)
+            self.producer = Producer(producer_config)
+            self.consumer.subscribe([self.consumer_topic])
+            logger.info("Connected to Kafka (attempt 1)")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to connect to Kafka: {e}")
+            return False
     
     def parse_wazuh_alert(self, alert):
         """Parse Wazuh alert structure"""
@@ -198,8 +181,11 @@ class ProcessingService:
             parsed = self.parse_wazuh_alert(alert)
             ecs_event = self.normalize_to_ecs(parsed, alert)
             
-            future = self.producer.send(self.producer_topic, value=ecs_event)
-            future.get(timeout=5)
+            self.producer.produce(
+                self.producer_topic,
+                value=json.dumps(ecs_event, default=str).encode('utf-8')
+            )
+            self.producer.flush()
             
             self.processed_count += 1
             
@@ -230,8 +216,20 @@ class ProcessingService:
         logger.info("(Press Ctrl+C to stop)")
         
         try:
-            for message in self.consumer:
-                alert = message.value
+            while True:
+                msg = self.consumer.poll(timeout=1.0)
+                
+                if msg is None:
+                    continue
+                
+                if msg.error():
+                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                        continue
+                    else:
+                        logger.error(f"Consumer error: {msg.error()}")
+                        continue
+                
+                alert = json.loads(msg.value().decode('utf-8'))
                 self.process_alert(alert)
         
         except KeyboardInterrupt:
@@ -239,7 +237,6 @@ class ProcessingService:
         finally:
             if self.producer:
                 self.producer.flush()
-                self.producer.close()
             if self.consumer:
                 self.consumer.close()
             
