@@ -61,7 +61,7 @@ class ProcessingService:
         self.error_count = 0
     
     def connect_kafka(self):
-        """Connect to Kafka broker using Confluent client"""
+        """Connect to Kafka broker using Confluent client with retry"""
         logger.info(f"Connecting to Kafka: {self.kafka_broker}")
         
         consumer_config = {
@@ -71,20 +71,37 @@ class ProcessingService:
             'enable.auto.commit': True,
             'session.timeout.ms': 30000,
             'heartbeat.interval.ms': 10000,
+            'topic.metadata.refresh.interval.ms': 5000,
         }
         
         producer_config = {
             'bootstrap.servers': self.kafka_broker,
             'acks': 'all',
-            'retries': 3,
+            'retries': 10,
+            'topic.metadata.refresh.interval.ms': 5000,
         }
         
         try:
             self.consumer = Consumer(consumer_config)
             self.producer = Producer(producer_config)
-            self.consumer.subscribe([self.consumer_topic])
-            logger.info("Connected to Kafka (attempt 1)")
-            return True
+            
+            # Force metadata refresh
+            logger.info("Refreshing Kafka metadata...")
+            time.sleep(3)
+            
+            # Try to subscribe with retry
+            for attempt in range(10):
+                try:
+                    self.consumer.subscribe([self.consumer_topic])
+                    logger.info(f"Subscribed to {self.consumer_topic} (attempt {attempt + 1})")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Subscribe attempt {attempt + 1} failed: {e}")
+                    time.sleep(2)
+            
+            logger.error("Failed to subscribe after 10 attempts")
+            return False
+            
         except Exception as e:
             logger.error(f"Failed to connect to Kafka: {e}")
             return False
