@@ -153,3 +153,27 @@ services:
         LOG_LEVEL: INFO
       depends_on:
         - kafka      
+  correlation:
+      build:
+        context: ./services/correlation
+        dockerfile: Dockerfile
+      container_name: soc-correlation
+      hostname: correlation
+      restart: unless-stopped
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "50m"
+          max-file: "5"
+      networks:
+        - soc-net
+      environment:
+        KAFKA_BROKER: kafka:9092
+        KAFKA_CONSUMER_TOPIC: alerts-enriched
+        KAFKA_PRODUCER_TOPIC: incidents
+        REDIS_HOST: redis
+        REDIS_PORT: "6379"
+        LOG_LEVEL: INFO
+      depends_on:
+        - kafka
+        - redis        
