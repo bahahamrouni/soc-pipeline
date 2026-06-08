@@ -177,3 +177,25 @@ services:
       depends_on:
         - kafka
         - redis        
+
+  ai-inference:
+      build:
+        context: ./services/ai-inference
+        dockerfile: Dockerfile
+      container_name: soc-ai-inference
+      hostname: ai-inference
+      restart: unless-stopped
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "50m"
+          max-file: "5"
+      networks:
+        - soc-net
+      environment:
+        KAFKA_BROKER: kafka:9092
+        KAFKA_CONSUMER_TOPIC: incidents
+        KAFKA_PRODUCER_TOPIC: ai-results
+        LOG_LEVEL: INFO
+      depends_on:
+        - kafka
