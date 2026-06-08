@@ -173,6 +173,7 @@ services:
         KAFKA_PRODUCER_TOPIC: incidents
         REDIS_HOST: redis
         REDIS_PORT: "6379"
+        REDIS_PASSWORD: "R3disSOC!"
         LOG_LEVEL: INFO
       depends_on:
         - kafka

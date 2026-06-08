@@ -165,6 +165,7 @@ class CorrelationEngine:
                 self.redis_client = redis.Redis(
                     host=self.redis_host,
                     port=self.redis_port,
+                    password=os.environ.get('REDIS_PASSWORD', None),
                     db=0,
                     decode_responses=True,
                     socket_connect_timeout=5,
