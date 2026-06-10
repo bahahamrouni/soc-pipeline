@@ -223,11 +223,13 @@ class OpenSearchWriter:
     def write_incident(self, result):
         """Index one document into OpenSearch."""
         doc_id = result.get("incident_id", str(uuid.uuid4()))
+        # Remove reserved OpenSearch metadata fields before indexing
+        doc = {k: v for k, v in result.items() if not k.startswith('_')}
         self.client.index(
             index=self.index,
             id=doc_id,
-            body=result,
-        )
+            body=doc,
+    )
 
 
 class StorageService:
