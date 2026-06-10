@@ -18,6 +18,7 @@ volumes:
   zookeeper-data:
   redis-data:
   postgres-data:
+  opensearch-data:
 
 services:
 
@@ -116,6 +117,32 @@ services:
       timeout: 5s
       retries: 5
 
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: soc-opensearch
+    hostname: opensearch
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    ports:
+      - "9201:9200"
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
   ingestion:
     build:
       context: ./services/ingestion
@@ -136,67 +163,88 @@ services:
       LOG_LEVEL: INFO
     depends_on:
       - kafka
+
   processing:
-      build:
-        context: ./services/processing
-        dockerfile: Dockerfile
-      container_name: soc-processing
-      hostname: processing
-      <<: *default-restart
-      logging: *default-logging
-      networks:
-        - soc-net
-      environment:
-        KAFKA_BROKER: kafka:9092
-        KAFKA_CONSUMER_TOPIC: wazuh-alerts-raw
-        KAFKA_PRODUCER_TOPIC: alerts-enriched
-        LOG_LEVEL: INFO
-      depends_on:
-        - kafka      
+    build:
+      context: ./services/processing
+      dockerfile: Dockerfile
+    container_name: soc-processing
+    hostname: processing
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_CONSUMER_TOPIC: wazuh-alerts-raw
+      KAFKA_PRODUCER_TOPIC: alerts-enriched
+      LOG_LEVEL: INFO
+    depends_on:
+      - kafka
+
   correlation:
-      build:
-        context: ./services/correlation
-        dockerfile: Dockerfile
-      container_name: soc-correlation
-      hostname: correlation
-      restart: unless-stopped
-      logging:
-        driver: "json-file"
-        options:
-          max-size: "50m"
-          max-file: "5"
-      networks:
-        - soc-net
-      environment:
-        KAFKA_BROKER: kafka:9092
-        KAFKA_CONSUMER_TOPIC: alerts-enriched
-        KAFKA_PRODUCER_TOPIC: incidents
-        REDIS_HOST: redis
-        REDIS_PORT: "6379"
-        REDIS_PASSWORD: "R3disSOC!"
-        LOG_LEVEL: INFO
-      depends_on:
-        - kafka
-        - redis        
+    build:
+      context: ./services/correlation
+      dockerfile: Dockerfile
+    container_name: soc-correlation
+    hostname: correlation
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_CONSUMER_TOPIC: alerts-enriched
+      KAFKA_PRODUCER_TOPIC: incidents
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "R3disSOC!"
+      LOG_LEVEL: INFO
+    depends_on:
+      - kafka
+      - redis
 
   ai-inference:
-      build:
-        context: ./services/ai-inference
-        dockerfile: Dockerfile
-      container_name: soc-ai-inference
-      hostname: ai-inference
-      restart: unless-stopped
-      logging:
-        driver: "json-file"
-        options:
-          max-size: "50m"
-          max-file: "5"
-      networks:
-        - soc-net
-      environment:
-        KAFKA_BROKER: kafka:9092
-        KAFKA_CONSUMER_TOPIC: incidents
-        KAFKA_PRODUCER_TOPIC: ai-results
-        LOG_LEVEL: INFO
-      depends_on:
-        - kafka
+    build:
+      context: ./services/ai-inference
+      dockerfile: Dockerfile
+    container_name: soc-ai-inference
+    hostname: ai-inference
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_CONSUMER_TOPIC: incidents
+      KAFKA_PRODUCER_TOPIC: ai-results
+      LOG_LEVEL: INFO
+    depends_on:
+      - kafka
+
+  storage:
+    build:
+      context: ./services/storage
+      dockerfile: Dockerfile
+    container_name: soc-storage
+    hostname: storage
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - soc-net
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_CONSUMER_TOPIC: ai-results
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: socdb
+      POSTGRES_USER: socadmin
+      POSTGRES_PASSWORD: S0cAdmin!
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: "9201"
+      OPENSEARCH_INDEX: soc-incidents
+      LOG_LEVEL: INFO
+    depends_on:
+      - kafka
+      - postgres
+      - opensearch
