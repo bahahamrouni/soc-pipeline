@@ -128,11 +128,11 @@ services:
     ports:
       - "9201:9200"
     environment:
-      - discovery.type=single-node
-      - DISABLE_SECURITY_PLUGIN=true
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
     ulimits:
       memlock:
         soft: -1
@@ -241,7 +241,7 @@ services:
       POSTGRES_USER: socadmin
       POSTGRES_PASSWORD: S0cAdmin!
       OPENSEARCH_HOST: opensearch
-      OPENSEARCH_PORT: "9201"
+      OPENSEARCH_PORT: "9200"
       OPENSEARCH_INDEX: soc-incidents
       LOG_LEVEL: INFO
     depends_on:
