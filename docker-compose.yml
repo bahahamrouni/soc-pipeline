@@ -248,27 +248,27 @@ services:
       - kafka
       - postgres
       - opensearch
-dashboard:
-    build:
-      context: ./services/dashboard
-      dockerfile: Dockerfile
-    container_name: soc-dashboard
-    hostname: dashboard
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-    networks:
-      - soc-net
-    ports:
-      - "8000:8000"
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: "5432"
-      POSTGRES_DB: socdb
-      POSTGRES_USER: socadmin
-      POSTGRES_PASSWORD: S0cAdmin!
-    depends_on:
-      - postgres
+  dashboard:
+      build:
+        context: ./services/dashboard
+        dockerfile: Dockerfile
+      container_name: soc-dashboard
+      hostname: dashboard
+      restart: unless-stopped
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "50m"
+          max-file: "5"
+      networks:
+        - soc-net
+      ports:
+        - "8000:8000"
+      environment:
+        POSTGRES_HOST: postgres
+        POSTGRES_PORT: "5432"
+        POSTGRES_DB: socdb
+        POSTGRES_USER: socadmin
+        POSTGRES_PASSWORD: S0cAdmin!
+      depends_on:
+        - postgres
