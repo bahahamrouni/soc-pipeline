@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0a0e1a;
+  color: #f1f5f9;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #111827; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+.severity-critical { color: #ef4444; }
+.severity-high     { color: #f97316; }
+.severity-medium   { color: #eab308; }
+.severity-info     { color: #3b82f6; }
+
+.badge-critical { background: #7f1d1d; color: #fca5a5; }
+.badge-high     { background: #7c2d12; color: #fdba74; }
+.badge-medium   { background: #713f12; color: #fde047; }
+.badge-info     { background: #1e3a5f; color: #93c5fd; }
+.badge-open     { background: #064e3b; color: #6ee7b7; }
+.badge-closed   { background: #1f2937; color: #9ca3af; }
+.badge-investigating { background: #312e81; color: #a5b4fc; }
