@@ -1,0 +1,53 @@
+<!--
+  Place in /var/ossec/etc/decoders/local_decoder.xml (append, don't overwrite)
+  and /var/ossec/etc/rules/local_rules.xml (append, don't overwrite) respectively.
+  Split into two files below, clearly marked.
+
+  IMPORTANT: pfSense's filterlog CSV format has protocol-dependent trailing
+  fields (TCP vs UDP vs ICMP differ). The regex below matches the common
+  leading fields (rule#, interface, action, direction, protocol, src, dst,
+  ports) which is what the port-scan rule needs, and ignores the rest.
+  Before trusting this in production:
+    1. On pfSense, enable remote logging (see 03_pfsense_setup.md)
+    2. On the Wazuh manager, capture a few real lines:
+         tail -f /var/log/syslog | grep filterlog
+    3. Compare against the regex below and adjust field offsets if your
+       pfSense version's filterlog layout differs.
+-->
+
+<!-- ============ local_decoder.xml ============ -->
+<decoder name="pfsense-filterlog">
+  <program_name>^filterlog</program_name>
+</decoder>
+
+<decoder name="pfsense-filterlog-fields">
+  <parent>pfsense-filterlog</parent>
+  <regex offset="after_parent">^\d+,\S*,\S*,\S+,(\S+),(\S+),(\S+),\S+,\d+,\S*,\S*,\d+,\S*,\S*,\S*,(\d+),(\S+),\d+,(\S+),(\S+),(\d+),(\d+)</regex>
+  <order>interface,reason,action,protocol_id,protocol,srcip,dstip,srcport,dstport</order>
+</decoder>
+
+
+<!-- ============ local_rules.xml ============ -->
+<group name="pfsense,firewall,">
+
+  <!-- Base rule: any parsed pfSense filterlog event -->
+  <rule id="100200" level="3">
+    <decoded_as>pfsense-filterlog</decoded_as>
+    <description>pfSense: firewall filter log event ($(action) $(protocol) $(srcip):$(srcport) -> $(dstip):$(dstport))</description>
+    <group>firewall,pfsense,</group>
+  </rule>
+
+  <!-- Only escalate on blocked/denied traffic, not normal passes -->
+  <rule id="100201" level="10" frequency="10" timeframe="30" ignore="60">
+    <if_matched_sid>100200</if_matched_sid>
+    <field name="action">block</field>
+    <same_source_ip />
+    <different_dstport />
+    <description>pfSense: Possible port scan - $(srcip) hit 10+ distinct ports in 30s</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>recon,port_scan,pfsense,</group>
+  </rule>
+
+</group>
