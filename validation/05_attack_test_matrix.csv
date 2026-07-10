@@ -1,0 +1,12 @@
+scenario_id,attack_class,tool,command_template,target,repetitions,expected_wazuh_rule_id,notes
+RECON-01,reconnaissance,nmap,nmap -sV -p- {target},192.168.10.104,15,100201,"vary port ranges/timing (-T2 vs -T4) across runs for feature diversity"
+RECON-02,reconnaissance,nmap,nmap -sS -p 1-1000 {target},192.168.10.104,10,100201,"stealth scan variant"
+BRUTE-01,brute_force,hydra,hydra -l root -P wordlist.txt ssh://{target},192.168.10.104,15,100210,"vary wordlist size/speed"
+BRUTE-02,brute_force,hydra,hydra -L users.txt -P wordlist.txt ssh://{target},192.168.10.104,10,100210,"multi-user variant"
+PRIVESC-01,privilege_escalation,manual/linpeas,sudo -l ; linpeas.sh,192.168.10.104,15,TBD,"needs local shell first - chain after successful brute force run; requires new local_rules.xml rule, see notes below"
+PRIVESC-02,privilege_escalation,manual,su - / sudo su,192.168.10.104,10,TBD,"direct privilege escalation attempt, simpler ground truth"
+LATERAL-01,lateral_movement,ssh chaining,ssh {compromised_host} then ssh {second_target},192.168.10.104 -> 192.168.10.100,10,TBD,"needs a rule correlating auth success on host A followed by outbound connection to host B within short window"
+LATERAL-02,lateral_movement,smb/wmiexec,wmiexec.py against WIN11 clients,192.168.10.100,10,TBD,"Windows-specific lateral movement, requires Sysmon or equivalent on Windows agents for full visibility"
+MALWARE-01,malware,curl/eicar,curl -o /tmp/eicar.com {eicar_test_url},192.168.10.104,15,1002,"EICAR test file download, confirm existing Wazuh FIM/AV integration rule id"
+DOS-01,alert_storm,nmap,nmap -sV -p- --min-rate 5000 {target1} {target2} {target3},multiple hosts,10,100201+CORR-004,"triggers both port-scan rule and CORR-004 alert-storm correlation"
+BENIGN-01,benign,n/a,normal admin/user activity (RDP/SSH logins file access web browsing updates),all hosts,1,n/a,"run continuously for 4-6+ hours across the fleet, no attack tooling active - this is your false-positive test set"
