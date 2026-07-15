@@ -101,6 +101,20 @@ CORRELATION_RULES = [
         "key_fn": lambda a: f"high_sev:{a.get('host', {}).get('name', 'unknown')}",
         "match_fn": lambda a: a.get("event", {}).get("severity") in ["high", "critical"],
     },
+    {
+        "id": "CORR-006",
+        "name": "Reconnaissance/ port scan",
+        "description": "pfsense port scan confirmed by wazuh frequency correlation (rule 100201)",
+        "window_sec": 30,
+        "threshold": 1,
+        "severity": "high",
+        "key_fn": lambda a: f"recon:{a.get('data', {}).get('srcip', a.get('source', {}).get('ip', 'unkown'))}",
+        "match_fn": lambda a: (
+            a.get("rule", {}).get("id") == "100201"
+            or "port_scan" in a.get("rule", {}).get("groups", [])
+            or "recon" in a.get("rule", {}).get("groups", [])
+        ),
+     },
 ]
 
 

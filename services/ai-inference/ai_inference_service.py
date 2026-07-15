@@ -49,6 +49,7 @@ RULE_ID_MAP = {
     "CORR-003": 3,  # Lateral Movement
     "CORR-004": 4,  # Alert Storm
     "CORR-005": 5,  # Repeated High Severity
+    "CORR-006": 6,  #Reconnaissance/ Port scan
 }
 
 SEVERITY_MAP = {
