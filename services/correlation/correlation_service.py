@@ -71,11 +71,11 @@ CORRELATION_RULES = [
         "window_sec": 300,
         "threshold": 3,
         "severity": "critical",
-        # Key includes source IP + destination host so we count unique destinations
-        "key_fn": lambda a: (
-            f"lateral:{a.get('source', {}).get('ip', 'unknown')}:"
-            f"{a.get('host', {}).get('name', 'unknown')}"
-        ),
+        "mode": "distinct",
+        # Key is source IP ONLY — distinct destination hosts are tracked via a Redis SET (value_fn)
+        "key_fn": lambda a: f"lateral:{a.get('source', {}).get('ip', 'unknown')}",
+        # The value added to the set for this alert — distinct count of THIS is what matters
+        "value_fn": lambda a: a.get("host", {}).get("name", "unknown"),
         "match_fn": lambda a: (
             a.get("source", {}).get("ip", "unknown") not in ["unknown", None]
             and a.get("event", {}).get("severity") in ["medium", "high", "critical"]
@@ -146,6 +146,24 @@ class RedisWindowCounter:
             self.r.delete(full_key)
             return count, True
 
+        return count, False
+
+    def add_and_check_distinct(self, key, member, window_sec, threshold):
+        """
+        Track DISTINCT members added to a set within a sliding window.
+        Fires when the number of distinct members reaches threshold.
+        Returns (distinct_count, triggered).
+        """
+        full_key = f"corrset:{key}"
+        pipe = self.r.pipeline()
+        pipe.sadd(full_key, member)
+        pipe.expire(full_key, window_sec)
+        pipe.scard(full_key)
+        results = pipe.execute()
+        count = results[2]
+        if count == threshold:
+            self.r.delete(full_key)
+            return count, True
         return count, False
 
     def get_count(self, key):
@@ -251,9 +269,15 @@ class CorrelationEngine:
                     continue
 
                 key = rule["key_fn"](alert)
-                count, triggered = self.window_counter.increment_and_check(
-                    key, rule["window_sec"], rule["threshold"]
-                )
+                if rule.get("mode") == "distinct":
+                    member = rule["value_fn"](alert)
+                    count, triggered = self.window_counter.add_and_check_distinct(
+                        key, member, rule["window_sec"], rule["threshold"]
+                    )
+                else:
+                    count, triggered = self.window_counter.increment_and_check(
+                        key, rule["window_sec"], rule["threshold"]
+                    )
 
                 logger.debug(
                     f"Rule {rule['id']} | key={key} | count={count}/{rule['threshold']}"
