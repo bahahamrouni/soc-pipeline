@@ -72,9 +72,9 @@ CORRELATION_RULES = [
         "threshold": 3,
         "severity": "critical",
         "mode": "distinct",
-        # Key is source IP ONLY — distinct destination hosts are tracked via a Redis SET (value_fn)
+        # Key is source IP ONLY - distinct destination hosts are tracked via a Redis SET (value_fn)
         "key_fn": lambda a: f"lateral:{a.get('source', {}).get('ip', 'unknown')}",
-        # The value added to the set for this alert — distinct count of THIS is what matters
+        # The value added to the set for this alert - distinct count of THIS is what matters
         "value_fn": lambda a: a.get("host", {}).get("name", "unknown"),
         "match_fn": lambda a: (
             a.get("source", {}).get("ip", "unknown") not in ["unknown", None]
