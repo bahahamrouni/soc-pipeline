@@ -19,6 +19,7 @@ volumes:
   redis-data:
   postgres-data:
   opensearch-data:
+  ingestion-state:
 
 services:
 
@@ -155,12 +156,14 @@ services:
       - soc-net
     volumes:
       - /var/ossec/logs/alerts:/app/data:ro
+      - ingestion-state:/app/state
     environment:
       KAFKA_BROKER: kafka:9092
       ALERTS_FILE: /app/data/alerts.json
       KAFKA_TOPIC: wazuh-alerts-raw
       POLL_INTERVAL: "2"
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
+      POSITION_FILE: /app/state/alerts.json.pos
     depends_on:
       - kafka
 
@@ -178,7 +181,7 @@ services:
       KAFKA_BROKER: kafka:9092
       KAFKA_CONSUMER_TOPIC: wazuh-alerts-raw
       KAFKA_PRODUCER_TOPIC: alerts-enriched
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
     depends_on:
       - kafka
 
@@ -199,7 +202,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "R3disSOC!"
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
     depends_on:
       - kafka
       - redis

@@ -28,7 +28,7 @@ class IngestionService:
         
         self.producer = None
         self.last_position = 0
-        self.position_file = self.alerts_file + '.pos'
+        self.position_file = os.environ.get('POSITION_FILE', self.alerts_file + '.pos')
         
         self.sent_count = 0
         self.error_count = 0
@@ -96,7 +96,7 @@ class IngestionService:
         logger.info(f"Reading existing alerts from {self.alerts_file}...")
         
         try:
-            with open(self.alerts_file, 'r') as f:
+            with open(self.alerts_file, 'r', encoding='utf-8', errors='replace') as f:
                 line_num = 0
                 for line in f:
                     line_num += 1
@@ -148,13 +148,18 @@ class IngestionService:
         try:
             while True:
                 try:
-                    with open(self.alerts_file, 'r') as f:
+                    with open(self.alerts_file, 'r', encoding='utf-8', errors='replace') as f:
                         f.seek(0, 2)  # Go to end
                         
                         while True:
+                            pos_before = f.tell()
                             line = f.readline()
                             if not line:
                                 time.sleep(self.poll_interval)
+                                continue
+                            if not line.endswith('\n'):
+                                f.seek(pos_before)
+                                time.sleep(0.2)
                                 continue
                             
                             line = line.strip()
@@ -167,8 +172,9 @@ class IngestionService:
                                 self.last_position += 1
                                 self.save_position()
                             except json.JSONDecodeError as e:
-                                logger.error(f"JSON decode error: {e}")
-                                self.error_count += 1
+                                logger.warning(f"Malformed line, rewinding to entry: {e}")
+                                f.seek(pos_before)
+                                time.sleep(0.2)
                 
                 except IOError:
                     time.sleep(self.poll_interval)
