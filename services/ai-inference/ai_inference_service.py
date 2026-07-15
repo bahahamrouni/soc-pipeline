@@ -99,6 +99,8 @@ def generate_training_data(n_samples=2000):
         ("alert_storm",         4, (2,3), (20,80), (1,2), (0,2), 0.4),
         ("reconnaissance",      1, (1,3), (3,20),  (1,3), (1,3), 0.2),
         ("reconnaissance",      3, (1,3), (3,15),  (1,2), (0,2), 0.3),
+        ("reconnaissance",      6, (3,4), (1,3),   (1,4), (0,4), 0.8),
+        ("reconnaissance",      6, (2,4), (1,4),   (1,3), (0,3), 0.6),
         ("data_exfiltration",   3, (2,4), (3,10),  (3,5), (3,5), 0.9),
         ("data_exfiltration",   5, (3,4), (3,8),   (4,5), (4,5), 0.95),
         ("malware_activity",    2, (3,4), (3,15),  (2,4), (2,4), 0.8),
@@ -118,8 +120,8 @@ def generate_training_data(n_samples=2000):
             criticality = np.random.randint(*crit_range)
             role        = np.random.randint(*role_range)
             internal    = 1 if np.random.random() < int_prob else 0
-            window_sec  = np.random.choice([60, 120, 180, 300])
-            threshold   = np.random.randint(3, 21)
+            window_sec  = np.random.choice([30, 60, 120, 180, 300])
+            threshold   = np.random.randint(1, 21)
             hour        = np.random.randint(0, 24)
 
             # Add noise
