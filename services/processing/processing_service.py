@@ -138,8 +138,23 @@ class ProcessingService:
         log_template = self.template.extract_template(parsed['full_log']) if parsed['full_log'] else ''
         asset = self.cmdb.lookup(parsed['agent_ip'])
         
-        severity_map = {0: 'info', 1: 'low', 2: 'low', 3: 'medium', 4: 'medium', 5: 'high', 6: 'critical', 7: 'critical'}
-        severity = severity_map.get(parsed['rule_level'], 'unknown')
+        # Threshold-based, covers ALL Wazuh levels (0-15+), not just 0-7.
+        # Custom high-priority rules (e.g. level=10 correlation rules like
+        # 100201/100210) previously fell through to 'unknown' and silently
+        # broke any correlation rule that gates on event.severity (CORR-002,
+        # CORR-003, CORR-005).
+        def _level_to_severity(level):
+            if level <= 0:
+                return 'info'
+            elif level <= 2:
+                return 'low'
+            elif level <= 4:
+                return 'medium'
+            elif level <= 6:
+                return 'high'
+            else:
+                return 'critical'
+        severity = _level_to_severity(parsed['rule_level'])
         
         ecs_event = {
             '@timestamp': parsed['timestamp'],
