@@ -35,26 +35,62 @@ df["rule_level"] = pd.to_numeric(df["rule_level"], errors="coerce").fillna(0)
 feature_cols = [c + "_enc" for c in cat_cols] + ["rule_level"]
 X = df[feature_cols].values
 y_raw = df["label"].values
-groups = df["scenario_id"].astype(str).values  # group by run, not by row
+groups = df["run_id"].astype(str).values  # group by INDEPENDENT run, not scenario type
 
 label_enc = LabelEncoder()
 y = label_enc.fit_transform(y_raw)
 class_names = label_enc.classes_
 
-# ---- Leakage-safe split: group by scenario/run, not by individual alert ----
-gss = GroupShuffleSplit(n_splits=1, test_size=0.15, random_state=42)
-train_idx, test_idx = next(gss.split(X, y, groups))
-X_train, X_test = X[train_idx], X[test_idx]
-y_train, y_test = y[train_idx], y[test_idx]
-groups_train = groups[train_idx]
+from sklearn.model_selection import train_test_split
 
-# further split off a validation set from train, also grouped
-gss2 = GroupShuffleSplit(n_splits=1, test_size=0.176, random_state=42)  # ~15% of original
-tr_idx, val_idx = next(gss2.split(X_train, y_train, groups_train))
-X_val, y_val = X_train[val_idx], y_train[val_idx]
-X_train, y_train = X_train[tr_idx], y_train[tr_idx]
+def _try_group_split(X, y, groups, class_names):
+    """Attempt a leakage-safe group split. Returns None if any class ends
+    up missing from train or test (a single-group class, e.g. a benign
+    baseline collected as one continuous run, can't be split and may land
+    entirely in one bucket by chance)."""
+    gss = GroupShuffleSplit(n_splits=1, test_size=0.15, random_state=42)
+    train_idx, test_idx = next(gss.split(X, y, groups))
+    if len(np.unique(y[train_idx])) < len(class_names) or len(np.unique(y[test_idx])) < len(class_names):
+        return None
+    groups_train = groups[train_idx]
+    gss2 = GroupShuffleSplit(n_splits=1, test_size=0.176, random_state=42)
+    tr_idx, val_idx = next(gss2.split(X[train_idx], y[train_idx], groups_train))
+    final_train_idx = train_idx[tr_idx]
+    val_idx = train_idx[val_idx]
+    if len(np.unique(y[final_train_idx])) < len(class_names):
+        return None
+    return final_train_idx, val_idx, test_idx
 
-print(f"\nSplit sizes -> train: {len(X_train)}, val: {len(X_val)}, test: {len(X_test)}")
+result = _try_group_split(X, y, groups, class_names)
+n_groups = len(np.unique(groups))
+
+if result is not None:
+    train_idx, val_idx, test_idx = result
+    X_train, X_val, X_test = X[train_idx], X[val_idx], X[test_idx]
+    y_train, y_val, y_test = y[train_idx], y[val_idx], y[test_idx]
+    split_method = f"grouped by run_id ({n_groups} independent runs)"
+else:
+    print(f"\nWARNING: {n_groups} independent runs across {len(class_names)} "
+          f"classes was not enough for every class to appear in every split "
+          f"bucket (this happens when a class was collected as a single "
+          f"continuous run, e.g. one benign baseline window, which cannot "
+          f"itself be subdivided into independent groups). Falling back to "
+          f"a STRATIFIED PER-ALERT split. LIMITATION for the report: alerts "
+          f"from the same run may appear in both train and test for "
+          f"under-represented classes, which can inflate their reported "
+          f"metrics. Collecting more independent runs (e.g. several shorter "
+          f"benign windows instead of one long one) would resolve this.")
+    all_idx = np.arange(len(X))
+    train_idx, test_idx = train_test_split(
+        all_idx, test_size=0.15, random_state=42, stratify=y)
+    train_idx, val_idx = train_test_split(
+        train_idx, test_size=0.176, random_state=42, stratify=y[train_idx])
+    X_train, X_val, X_test = X[train_idx], X[val_idx], X[test_idx]
+    y_train, y_val, y_test = y[train_idx], y[val_idx], y[test_idx]
+    split_method = "stratified per-alert (grouped split not viable - see warning above)"
+
+print(f"\nSplit method: {split_method}")
+print(f"Split sizes -> train: {len(X_train)}, val: {len(X_val)}, test: {len(X_test)}")
 
 # ---- Hyperparameter search via stratified k-fold on TRAIN only ----
 param_grid = {
@@ -63,7 +99,12 @@ param_grid = {
     "n_estimators": [100, 200],
 }
 base_model = xgb.XGBClassifier(eval_metric="mlogloss", random_state=42)
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+min_class_count = pd.Series(y_train).value_counts().min()
+n_splits = max(2, min(5, int(min_class_count)))
+if n_splits < 5:
+    print(f"NOTE: smallest class in training set has only {min_class_count} "
+          f"sample(s) - using {n_splits}-fold CV instead of 5-fold.")
+skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 search = GridSearchCV(base_model, param_grid, cv=skf, scoring="f1_macro", n_jobs=-1)
 search.fit(X_train, y_train)
 model = search.best_estimator_
