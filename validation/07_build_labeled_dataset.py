@@ -79,7 +79,7 @@ def main():
     matched, skipped = 0, 0
     out_rows = []
 
-    with open(args.alerts) as f:
+    with open(args.alerts, encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.strip()
             if not line:
