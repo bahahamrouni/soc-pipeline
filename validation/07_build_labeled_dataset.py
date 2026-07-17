@@ -43,6 +43,12 @@ def load_runs(path, pad_seconds):
             end = datetime.fromisoformat(row["end_time_utc"]) + timedelta(seconds=pad_seconds)
             runs.append({
                 "scenario_id": row["scenario_id"],
+                # Unique per INDEPENDENT repetition, not per scenario type.
+                # scenario_id alone (e.g. "BRUTE-01") is shared by every
+                # repetition of that attack, which collapses 24 independent
+                # runs into a single group for leakage-safe splitting. Each
+                # row's start_time_utc is unique, so use it as the group key.
+                "run_id": f"{row['scenario_id']}__{row['start_time_utc']}",
                 "attack_class": row["attack_class"],
                 "target": row["target"],
                 "start": start,
@@ -57,12 +63,12 @@ def label_for(alert_time, alert_srcip, runs):
     # /agent so concurrent unrelated runs don't cross-contaminate labels.
     candidates = [r for r in runs if r["start"] <= alert_time <= r["end"]]
     if not candidates:
-        return None, None
+        return None, None, None
     if len(candidates) > 1 and alert_srcip:
         for r in candidates:
             if r["target"] and r["target"] in alert_srcip:
-                return r["attack_class"], r["scenario_id"]
-    return candidates[0]["attack_class"], candidates[0]["scenario_id"]
+                return r["attack_class"], r["scenario_id"], r["run_id"]
+    return candidates[0]["attack_class"], candidates[0]["scenario_id"], candidates[0]["run_id"]
 
 
 def main():
@@ -95,7 +101,7 @@ def main():
                 continue
 
             srcip = (alert.get("data", {}) or {}).get("srcip", "")
-            label, scenario_id = label_for(atime, srcip, runs)
+            label, scenario_id, run_id = label_for(atime, srcip, runs)
             if label is None:
                 skipped += 1
                 continue
@@ -105,6 +111,7 @@ def main():
             out_rows.append({
                 "label": label,
                 "scenario_id": scenario_id,
+                "run_id": run_id,
                 "rule_id": rule.get("id", ""),
                 "rule_level": rule.get("level", ""),
                 "rule_description": rule.get("description", ""),
