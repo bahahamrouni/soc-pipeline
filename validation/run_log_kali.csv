@@ -1,0 +1,60 @@
+scenario_id,attack_class,tool_cmd,target,start_time_utc,end_time_utc,run_note
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_small.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:47:43.040621+00:00,2026-07-16T11:48:10.860210+00:00,"rep 1/15, wordlist=/tmp/wl_small.txt, threads=8"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:15.992950+00:00,2026-07-16T11:48:16.261079+00:00,"rep 2/15, wordlist=/tmp/wl_large.txt, threads=8"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_medium.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:21.378258+00:00,2026-07-16T11:48:21.642168+00:00,"rep 3/15, wordlist=/tmp/wl_medium.txt, threads=4"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_small.txt -t 2 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:26.752318+00:00,2026-07-16T11:48:27.019212+00:00,"rep 4/15, wordlist=/tmp/wl_small.txt, threads=2"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:32.138761+00:00,2026-07-16T11:48:32.457808+00:00,"rep 5/15, wordlist=/tmp/wl_large.txt, threads=4"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_medium.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:37.568131+00:00,2026-07-16T11:48:37.858038+00:00,"rep 6/15, wordlist=/tmp/wl_medium.txt, threads=8"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_medium.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:42.968904+00:00,2026-07-16T11:48:43.193061+00:00,"rep 7/15, wordlist=/tmp/wl_medium.txt, threads=4"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 2 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:48.304624+00:00,2026-07-16T11:48:48.596234+00:00,"rep 8/15, wordlist=/tmp/wl_large.txt, threads=2"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:53.708695+00:00,2026-07-16T11:48:54.004042+00:00,"rep 9/15, wordlist=/tmp/wl_large.txt, threads=8"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_medium.txt -t 2 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:48:59.121674+00:00,2026-07-16T11:48:59.433849+00:00,"rep 10/15, wordlist=/tmp/wl_medium.txt, threads=2"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:49:04.551690+00:00,2026-07-16T11:49:45.593756+00:00,"rep 11/15, wordlist=/tmp/wl_large.txt, threads=4"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 2 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:49:50.720150+00:00,2026-07-16T11:49:51.005797+00:00,"rep 12/15, wordlist=/tmp/wl_large.txt, threads=2"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 2 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:49:56.120796+00:00,2026-07-16T11:49:56.387905+00:00,"rep 13/15, wordlist=/tmp/wl_large.txt, threads=2"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_large.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:50:01.496429+00:00,2026-07-16T11:50:40.470587+00:00,"rep 14/15, wordlist=/tmp/wl_large.txt, threads=8"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_small.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T11:50:45.590430+00:00,2026-07-16T11:50:45.875231+00:00,"rep 15/15, wordlist=/tmp/wl_small.txt, threads=4"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_medium.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:00:49.393478+00:00,2026-07-16T12:01:48.454824+00:00,"retry rep 2/15, wordlist=/tmp/wl_medium.txt, threads=4"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_medium.txt -t 2 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:02:08.574001+00:00,2026-07-16T12:18:24.749984+00:00,"retry rep 3/15, wordlist=/tmp/wl_medium.txt, threads=2"
+BRUTE-01,brute_force,hydra -l root -P /tmp/wl_medium.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:18:44.868237+00:00,2026-07-16T12:19:27.543859+00:00,"retry rep 4/15, wordlist=/tmp/wl_medium.txt, threads=4"
+BRUTE-01,brute_force,timeout 45 hydra -l root -P /tmp/wl_medium.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:27:37.858918+00:00,2026-07-16T12:28:22.883872+00:00,"retry rep 2/15, wordlist=/tmp/wl_medium.txt, threads=8"
+BRUTE-01,brute_force,timeout 45 hydra -l root -P /tmp/wl_small.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:28:38.005448+00:00,2026-07-16T12:28:48.221795+00:00,"retry rep 3/15, wordlist=/tmp/wl_small.txt, threads=4"
+BRUTE-01,brute_force,timeout 45 hydra -l root -P /tmp/wl_small.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:29:03.344719+00:00,2026-07-16T12:29:39.827437+00:00,"retry rep 4/15, wordlist=/tmp/wl_small.txt, threads=8"
+BRUTE-01,brute_force,timeout 45 hydra -l root -P /tmp/wl_medium.txt -t 8 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:29:54.945597+00:00,2026-07-16T12:29:55.175772+00:00,"retry rep 5/15, wordlist=/tmp/wl_medium.txt, threads=8"
+BRUTE-01,brute_force,timeout 45 hydra -l root -P /tmp/wl_small.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:30:10.297839+00:00,2026-07-16T12:30:10.543342+00:00,"retry rep 6/15, wordlist=/tmp/wl_small.txt, threads=4"
+BRUTE-01,brute_force,timeout 45 hydra -l root -P /tmp/wl_medium.txt -t 4 ssh://192.168.10.104,192.168.10.104,2026-07-16T12:30:25.666279+00:00,2026-07-16T12:30:25.916732+00:00,"retry rep 7/15, wordlist=/tmp/wl_medium.txt, threads=4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:34:32.061199+00:00,2026-07-16T12:34:41.202390+00:00,"rep 1/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T2 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:34:51.328209+00:00,2026-07-16T12:36:06.398915+00:00,"rep 2/15, timing=-T2"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T2 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:36:16.520299+00:00,2026-07-16T12:37:31.591014+00:00,"rep 3/15, timing=-T2"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:37:41.725415+00:00,2026-07-16T12:37:50.654734+00:00,"rep 4/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:38:00.777002+00:00,2026-07-16T12:38:09.797443+00:00,"rep 5/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T2 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:38:19.936315+00:00,2026-07-16T12:39:35.007185+00:00,"rep 6/15, timing=-T2"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:39:45.128399+00:00,2026-07-16T12:39:53.928505+00:00,"rep 7/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T2 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:40:04.044853+00:00,2026-07-16T12:41:19.110952+00:00,"rep 8/15, timing=-T2"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:41:29.235444+00:00,2026-07-16T12:41:38.161409+00:00,"rep 9/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T2 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:41:48.281475+00:00,2026-07-16T12:43:03.351054+00:00,"rep 10/15, timing=-T2"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:43:13.473011+00:00,2026-07-16T12:43:22.323108+00:00,"rep 11/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:43:32.453609+00:00,2026-07-16T12:43:41.274738+00:00,"rep 12/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:43:51.395540+00:00,2026-07-16T12:44:00.282012+00:00,"rep 13/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T4 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:44:10.409454+00:00,2026-07-16T12:44:19.293512+00:00,"rep 14/15, timing=-T4"
+RECON-01,reconnaissance,timeout 75 nmap -sV -T2 -p- 192.168.10.104,192.168.10.104,2026-07-16T12:44:29.417296+00:00,2026-07-16T12:45:44.479097+00:00,"rep 15/15, timing=-T2"
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:45:54.601190+00:00,2026-07-16T12:45:55.448641+00:00,rep 1/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:46:05.570539+00:00,2026-07-16T12:46:06.476479+00:00,rep 2/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:46:16.595385+00:00,2026-07-16T12:46:17.451574+00:00,rep 3/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:46:27.568871+00:00,2026-07-16T12:46:28.373078+00:00,rep 4/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:46:38.490715+00:00,2026-07-16T12:46:39.341277+00:00,rep 5/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:46:49.463215+00:00,2026-07-16T12:46:50.287689+00:00,rep 6/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:47:00.408152+00:00,2026-07-16T12:47:01.263430+00:00,rep 7/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:47:11.385486+00:00,2026-07-16T12:47:12.250235+00:00,rep 8/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:47:22.374536+00:00,2026-07-16T12:47:23.223739+00:00,rep 9/10
+RECON-02,reconnaissance,timeout 45 nmap -sS -p 1-1000 192.168.10.104,192.168.10.104,2026-07-16T12:47:33.344521+00:00,2026-07-16T12:47:34.183560+00:00,rep 10/10
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:09:18.520332+00:00,2026-07-17T00:09:19.449320+00:00,"rep 1/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:09:29.572718+00:00,2026-07-17T00:09:30.500417+00:00,"rep 2/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:09:40.623670+00:00,2026-07-17T00:09:41.501195+00:00,"rep 3/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:09:51.627218+00:00,2026-07-17T00:09:52.477832+00:00,"rep 4/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:10:02.599695+00:00,2026-07-17T00:10:03.515344+00:00,"rep 5/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:10:13.634268+00:00,2026-07-17T00:10:14.500559+00:00,"rep 6/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:10:24.628706+00:00,2026-07-17T00:10:25.520554+00:00,"rep 7/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:10:35.641914+00:00,2026-07-17T00:10:36.517503+00:00,"rep 8/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:10:46.640325+00:00,2026-07-17T00:10:47.545388+00:00,"rep 9/10, fast repeated scan to trigger volume threshold"
+DOS-01,alert_storm,timeout 30 nmap -sS -T5 --min-rate 1000 -p 1-2000 192.168.10.104,192.168.10.104,2026-07-17T00:10:57.666089+00:00,2026-07-17T00:10:58.574281+00:00,"rep 10/10, fast repeated scan to trigger volume threshold"
