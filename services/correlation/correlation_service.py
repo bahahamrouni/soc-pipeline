@@ -43,8 +43,7 @@ CORRELATION_RULES = [
         "window_sec": 60,
         "threshold": 5,
         "severity": "high",
-        "key_fn": lambda a: f"brute_force:{a.get('host', {}).get('ip', 'unknown')}",
-        "match_fn": lambda a: (
+        "key_fn": lambda a: f"brute_force:{a.get('source', {}).get('ip', 'unknown')}",        "match_fn": lambda a: (
             a.get("rule", {}).get("id") in ["60104", "60106", "5710", "5712", "2501", "2502"]
             or "authentication_failed" in a.get("rule", {}).get("category", "")
             or "brute_force" in a.get("rule", {}).get("category", "")
@@ -60,8 +59,15 @@ CORRELATION_RULES = [
         "key_fn": lambda a: f"priv_esc:{a.get('host', {}).get('name', 'unknown')}",
         "match_fn": lambda a: (
             a.get("event", {}).get("severity") in ["high", "critical"]
+            # NOTE: "windows_security" was intentionally removed from this list.
+            # It is Wazuh's generic top-level group applied to almost every
+            # Windows Security Event Log entry (including routine, benign
+            # "Windows audit failure event" noise), not specifically
+            # privilege-escalation-related. Matching on it made this rule
+            # fire constantly on ordinary background activity, mislabeled
+            # as "Privilege Escalation Burst". See Part VI of the PTI report.
             and any(g in a.get("rule", {}).get("category", "")
-                    for g in ["windows_security", "privilege", "escalation", "sudo"])
+                    for g in ["privilege", "escalation", "sudo"])
         ),
     },
     {
