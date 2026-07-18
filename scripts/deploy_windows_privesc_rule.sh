@@ -30,15 +30,14 @@ else
 EOF
 fi
 
-echo "[*] Validating XML syntax"
-if ! xmllint --noout "$RULES_FILE" 2>/tmp/xmllint_err.txt; then
-    echo "[X] XML validation FAILED. Restoring backup."
-    cat /tmp/xmllint_err.txt
+echo "[*] Validating rules via wazuh-analysisd test mode"
+if ! /var/ossec/bin/wazuh-analysisd -t 2>/tmp/wazuh_test_err.txt; then
+    echo "[X] Wazuh rule validation FAILED. Restoring backup."
+    cat /tmp/wazuh_test_err.txt
     cp "$BACKUP_FILE" "$RULES_FILE"
     exit 1
 fi
-echo "[OK] XML is valid."
-
+echo "[OK] Wazuh rules are valid."
 echo "[*] Restarting wazuh-manager"
 systemctl restart wazuh-manager
 
