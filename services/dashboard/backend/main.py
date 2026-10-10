@@ -28,7 +28,7 @@ DB_CONFIG = {
     "port":     int(os.environ.get("POSTGRES_PORT", 5432)),
     "dbname":   os.environ.get("POSTGRES_DB", "socdb"),
     "user":     os.environ.get("POSTGRES_USER", "socadmin"),
-    "password": os.environ.get("POSTGRES_PASSWORD", "REMOVED"),
+    "password": os.environ["POSTGRES_PASSWORD"],  # required, set in .env
 }
 
 SEVERITY_LABELS = {0: "info", 1: "medium", 2: "high", 3: "critical"}
@@ -58,8 +58,8 @@ async def lifespan(app: FastAPI):
     logger.info("SOC Dashboard API stopped")
 
 app = FastAPI(
-    title="HACO SOC Dashboard API",
-    description="API du Centre des Opérations de Sécurité - HACO S.A.",
+    title="SOC Dashboard API",
+    description="API du Centre des Opérations de Sécurité",
     version="1.0.0",
     lifespan=lifespan,
 )

@@ -43,7 +43,8 @@ CORRELATION_RULES = [
         "window_sec": 60,
         "threshold": 5,
         "severity": "high",
-        "key_fn": lambda a: f"brute_force:{a.get('source', {}).get('ip', 'unknown')}",        "match_fn": lambda a: (
+        "key_fn": lambda a: f"brute_force:{a.get('source', {}).get('ip', 'unknown')}",
+        "match_fn": lambda a: (
             a.get("rule", {}).get("id") in ["60104", "60106", "5710", "5712", "2501", "2502"]
             or "authentication_failed" in a.get("rule", {}).get("category", "")
             or "brute_force" in a.get("rule", {}).get("category", "")

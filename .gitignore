@@ -1,8 +1,29 @@
+# secrets and local config
 .env
-.DS_Store
+.env.*
+!.env.example
+
+# python / node
 __pycache__/
 *.pyc
+.venv/
+venv/
+node_modules/
+dist/
+.pytest_cache/
+
+# models and captured data (may contain environment details)
+*.pkl
+*.joblib
+model/
+*.pcap
+*.pcapng
 *.log
+validation/final_report_evidence/
+labeled_dataset.csv
+run_log.csv
+
+# editors / OS
+.DS_Store
 .vscode/
 .idea/
-node_modules/

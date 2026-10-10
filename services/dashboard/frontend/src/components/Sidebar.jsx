@@ -17,7 +17,7 @@ export default function Sidebar() {
             <Server size={16} className="text-white" />
           </div>
           <div>
-            <div className="text-sm font-bold text-white">HACO SOC</div>
+            <div className="text-sm font-bold text-white">SOC</div>
             <div className="text-xs text-soc-muted">v1.0</div>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-soc-border text-xs text-soc-muted">
-        HACO S.A. — El Haouaria
+        Environnement de laboratoire
       </div>
     </aside>
   )

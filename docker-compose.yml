@@ -1,5 +1,3 @@
-version: "3.9"
-
 x-logging: &default-logging
   driver: "json-file"
   options:
@@ -47,7 +45,7 @@ services:
     networks:
       - soc-net
     ports:
-      - "9092:9092"
+      - "${BIND_ADDR:-127.0.0.1}:9092:9092"
     depends_on:
       - zookeeper
     volumes:
@@ -86,12 +84,14 @@ services:
     logging: *default-logging
     networks:
       - soc-net
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"
     volumes:
       - redis-data:/data
       - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    command: redis-server /usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping 2>/dev/null | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -111,7 +111,7 @@ services:
     environment:
       POSTGRES_DB: socdb
       POSTGRES_USER: socadmin
-      POSTGRES_PASSWORD: REMOVED
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U socadmin -d socdb"]
       interval: 10s
@@ -127,7 +127,7 @@ services:
     networks:
       - soc-net
     ports:
-      - "9201:9200"
+      - "${BIND_ADDR:-127.0.0.1}:9201:9200"
     environment:
       discovery.type: single-node
       DISABLE_SECURITY_PLUGIN: "true"
@@ -162,7 +162,7 @@ services:
       ALERTS_FILE: /app/data/alerts.json
       KAFKA_TOPIC: wazuh-alerts-raw
       POLL_INTERVAL: "2"
-      LOG_LEVEL: DEBUG
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       POSITION_FILE: /app/state/alerts.json.pos
     depends_on:
       - kafka
@@ -181,7 +181,7 @@ services:
       KAFKA_BROKER: kafka:9092
       KAFKA_CONSUMER_TOPIC: wazuh-alerts-raw
       KAFKA_PRODUCER_TOPIC: alerts-enriched
-      LOG_LEVEL: DEBUG
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       - kafka
 
@@ -201,8 +201,8 @@ services:
       KAFKA_PRODUCER_TOPIC: incidents
       REDIS_HOST: redis
       REDIS_PORT: "6379"
-      REDIS_PASSWORD: "REMOVED"
-      LOG_LEVEL: DEBUG
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       - kafka
       - redis
@@ -242,7 +242,7 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_DB: socdb
       POSTGRES_USER: socadmin
-      POSTGRES_PASSWORD: REMOVED
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       OPENSEARCH_HOST: opensearch
       OPENSEARCH_PORT: "9200"
       OPENSEARCH_INDEX: soc-incidents
@@ -266,12 +266,12 @@ services:
       networks:
         - soc-net
       ports:
-        - "8000:8000"
+        - "${BIND_ADDR:-127.0.0.1}:8000:8000"
       environment:
         POSTGRES_HOST: postgres
         POSTGRES_PORT: "5432"
         POSTGRES_DB: socdb
         POSTGRES_USER: socadmin
-        POSTGRES_PASSWORD: REMOVED
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       depends_on:
         - postgres

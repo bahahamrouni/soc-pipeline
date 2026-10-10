@@ -46,7 +46,7 @@ class PostgresWriter:
         self.port     = int(os.environ.get('POSTGRES_PORT', 5432))
         self.db       = os.environ.get('POSTGRES_DB', 'socdb')
         self.user     = os.environ.get('POSTGRES_USER', 'socadmin')
-        self.password = os.environ.get('POSTGRES_PASSWORD', 'REMOVED')
+        self.password = os.environ['POSTGRES_PASSWORD']  # required, set in .env
         self.conn     = None
 
     def connect(self):
